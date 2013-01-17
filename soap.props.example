@@ -1,0 +1,8 @@
+[Auth Header]
+url = http://developer4.envoyww.com/WebService/EPAPI_1.0/wsdl.wsdl
+Domain = DOMAIN
+UserId = user
+UserPassword = password
+OemId = oemid
+OemPassword = oempassword
+
