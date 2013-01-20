@@ -33,11 +33,9 @@ class Service(object):
 
 class Member(object):
     def __init__(self, service):
-        self.member = m = service.client.factory.create('Member')
-        self.members = service.client.factory.create('ArrayOfMember')
-        for key, val in self.member:
-            self.key = key
-            print self.key
+        self.member = service.client.factory.create('Member')
+        self.cmemail = service.client.factory.create('ContactMethodEmail')
+
 
 
 
@@ -54,9 +52,10 @@ class MemberRequest(object):
                 self.query()
 
             if self.action == 'ADD':
+                membermodel = Member(self.service)
                 self.reader = csv.DictReader(open(self.filename, 'rU'))
-                self.usernames = [row['Username'] for row in self.reader]
-                self.query()
+                self.header = self.reader.fieldnames
+                self.add()
 
             if self.action == 'DELETE':
                 try:
@@ -99,11 +98,28 @@ class MemberRequest(object):
             print e.fault.detail
 
     def add(self):
-        self.member = m = service.client.factory.create('Member')
-        self.members = service.client.factory.create('ArrayOfMember')
-        for key, val in self.member:
-            self.key = key
-            print self.key
+        members = self.service.client.factory.create('ArrayOfMember')
+        membermodel = Member(self.service)
+
+        memberfields = []
+        cmemailfields = []
+
+        for attributes in membermodel.member:
+            k, v = attributes
+            memberfields.append(k)
+
+        for attributes in membermodel.cmemail:
+            k, v = attributes
+            cmemailfields.append(k)
+        print cmemailfields
+
+        for row in self.reader:
+            m = Member(self.service)
+            for k, v in row.items():
+                if k in memberfields:
+                    m.member[k] = v
+
+            members.Member.append(m.member)
 
 
     def append(self):
@@ -146,7 +162,7 @@ def main():
     service = Service()
     # m = MemberRequest(service, args.file, args.action)
     # m = MemberRequest(service, 'TPELLETIER_FULL.csv', 'QUERY')
-    m = Member(service)
+    m = MemberRequest(service, 'members.csv', 'ADD')
 
 
 if __name__ == '__main__':
