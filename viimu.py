@@ -9,7 +9,7 @@ import argparse
 
 
 CONF = ConfigParser.ConfigParser()
-CONF.read("soap.props")
+CONF.read("viimu.props")
 url = CONF.get("Auth Header", "url")
 
 
@@ -49,10 +49,14 @@ class MemberRequest(object):
 
             if self.action[0] == 'QUERY':
                 if len(self.action) > 1:
-                    if self.action[1] and self.action[1] in ('MEMBERS', 'CMS', 'CFS'):
-                        if self.action[1] == 'MEMBERS':  # Writes out a JSON file of member login names and Id's to be deleted.
+                    if self.action[1] and self.action[1] in ('MEMBERS',
+                                                             'CMS',
+                                                             'CFS'):
+                        if self.action[1] == 'MEMBERS':
+                        # Writes out a JSON file of member login names and Id's to be deleted.
                             if self.filename is None:
-                                print 'Must pass in a file to query members.  eg. -f members -a QUERY MEMBERS'
+                                print 'Must pass in a file to query members.  \
+                                eg. -f members -a QUERY MEMBERS'
                             else:
                                 self.reader = csv.DictReader(
                                     open(self.filename, 'rU'))
@@ -60,21 +64,27 @@ class MemberRequest(object):
                                     row['Username'] for row in self.reader]
                                 self.query()
                         if self.action[1] == 'CMS':  # Contact Methods
-                            cms = self.service.client.service.AvailableContactMethodQueryByOrganizationId(self.service.orgid)
+                            cms = self.service.client.service.AvailableContactMethodQueryByOrganizationId(
+                                self.service.orgid)
                             for cm in cms:
                                 strcm, cm = cm
                                 for c in cm:
-                                    print '%s_%s_%s (%s)' % (c.Transport, c.Qualifier, c.Ordinal, c.DisplayName)
+                                    print '%s_%s_%s (%s)' % (c.Transport,
+                                                             c.Qualifier,
+                                                             c.Ordinal,
+                                                             c.DisplayName)
 
                         if self.action[1] == 'CFS':  # Custom Fields
-                            cfs = self.service.client.service.OrganizationCustomFieldQueryByOrganizationId(self.service.orgidarray, 0, 300)
+                            cfs = self.service.client.service.OrganizationCustomFieldQueryByOrganizationId(
+                                self.service.orgidarray, 0, 300)
                             print cfs
                     else:
                         print '''Invalid option passed into QUERY action. (MEMBERS, CMS, CFS)
                                  eg. -a QUERY MEMBERS'''
 
             if self.action[0] == 'ADD':
-                membermodel = Member(self.service)
+
+                # membermodel = Member(self.service)
                 self.reader = csv.DictReader(open(self.filename, 'rU'))
                 self.header = self.reader.fieldnames
                 self.add()
@@ -83,7 +93,7 @@ class MemberRequest(object):
                 try:
                     self.memberids = json.load(open(self.filename, 'r'))
                     self.delete()
-                except ValueError as e:
+                except ValueError:
                     print 'Exiting. Not a valid JSON file.'
         else:
             print '%s not a valid action.(QUERY, ADD, UPDATE, DELETE)' % self.action
@@ -138,7 +148,8 @@ class MemberRequest(object):
             k, v = attributes
             memberfields.append(k)
 
-        cms = self.service.client.service.AvailableContactMethodQueryByOrganizationId(self.service.orgid)
+        cms = self.service.client.service.AvailableContactMethodQueryByOrganizationId(
+            self.service.orgid)
 
         for cm in cms:
             strcm, cm = cm
@@ -215,7 +226,8 @@ class MemberRequest(object):
         print self.stringmembers
 
         try:
-            confirmation = raw_input('Are you sure you want to delete %d users? yes/no: ' % len(self.stringmembers.string))
+            confirmation = raw_input('Are you sure you want to delete %d users? yes/no: ' % len(
+                self.stringmembers.string))
             if confirmation == 'yes':
                 print "Processing Deletes..."
                 try:
@@ -233,7 +245,10 @@ class MemberRequest(object):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--file', help='Specify the file.', default=None)
-    parser.add_argument('-a', "--action", nargs='+', help='Specify the action. (QUERY, ADD, UPDATE, DELETE)', default=None)
+    parser.add_argument('-a',
+                        '--action',
+                        nargs='+',
+                        help='Specify the action. (QUERY, ADD, UPDATE, DELETE)', default=None)
     parser.add_argument('-v', '--version', action='version',
                         version='%(prog)s 0.1', default=None)
 
@@ -243,7 +258,7 @@ def main():
 
     args = parser.parse_args()
     service = Service()
-    m = MemberRequest(service, args.file, args.action)
+    MemberRequest(service, args.file, args.action)
 
 
 if __name__ == '__main__':

@@ -17,6 +17,7 @@ xmlfiles/
 .idea/
 dist/
 soap.props
+viimu.props
 *.csv
 *.json
 *.xls
