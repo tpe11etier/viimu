@@ -2,21 +2,15 @@
 
 ## About
 
----
-
 This utility was created to allow you to ADD, UPDATE, DELETE members using data in csv format.
 
 ##Installation
 Note - ViiMU requires suds.  [SUDS](https://fedorahosted.org/suds/)
 
----
-
     pip install suds
     git clone https://github.com/tpe11etier/viimu.git
 
 ##Usage
-
----
 
     Usage:
     viimu.py [-f filename] [-a <action> <subaction>] [-s <sync>]
@@ -147,8 +141,4 @@ TRUE if the given members replace the existing subscriptions in the Varolii Prof
              Warnings = ""
           },
      }
-
-
-
----
 
