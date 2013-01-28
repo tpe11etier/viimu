@@ -6,3 +6,6 @@ UserPassword = password
 OemId = oemid
 OemPassword = oempassword
 
+[Logging]
+FileName = viimu.log
+LogLevel = DEBUG
