@@ -1,17 +1,44 @@
 #!/usr/bin/env python
 
-import sys
+"""Usage:
+  viimu.py [-f filename] [-a <action> <subaction>] [-s <sync>]
+  viimu.py -h | --help | -v | --version
+
+  Options:
+  -h --help                 show this help message and exit
+  -v --version               show version and exit
+  -f <filename>             filename to parse.
+                            Note - filename is not required when querying contact methods(CMS)
+                              and custom fields(CFS).
+  -a <action> <subaction>   actions to perform.  [QUERY, ADD, UPDATE, DELETE] [MEMBERS, CFS, CMS]
+  -s <sync>                 when using UPDATE, set to TRUE or FALSE. Note - defaults value is FALSE
+                            False if the given members augment information in the Varolii Profiles database.
+                            True if the given members replace the existing subscriptions in the Varolii Profiles database.
+"""
+from docopt import docopt
+
 import suds
 import ConfigParser
 import csv
 import json
-import argparse
 import urllib2
+import logging
 
 
 CONF = ConfigParser.ConfigParser()
-CONF.read("viimu.props")
-url = CONF.get("Auth Header", "url")
+CONF.read('viimu.props')
+url = CONF.get('Auth Header', 'url')
+loglevel = CONF.get('Logging', 'LogLevel')
+
+
+logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
+                    filename=CONF.get('Logging', 'FileName'),
+                    filemode='w')
+
+if loglevel == 'DEBUG':
+    logging.getLogger().setLevel(logging.DEBUG)
+else:
+    logging.getLogger().setLevel(logging.INFO)
 
 
 def chunker(seq, size):
@@ -20,24 +47,18 @@ def chunker(seq, size):
 
 class Service(object):
     def __init__(self, url=url):
-        try:
-            self.client = suds.client.Client(url)
-            try:
-                header = self.client.factory.create('AuthHeader')
-                header.Domain = CONF.get("Auth Header", "domain")
-                header.UserId = CONF.get("Auth Header", "userid")
-                header.UserPassword = CONF.get("Auth Header", "userpassword")
-                header.OemId = CONF.get("Auth Header", "oemid")
-                header.OemPassword = CONF.get("Auth Header", "oempassword")
-                self.client.set_options(soapheaders=header)
-                self.orgid = self.client.service.OrganizationQueryRoot()[0]
-                self.orgidarray = self.client.factory.create(
-                    'ArrayOfstring')
-                self.orgidarray.string.append(self.orgid)
-            except (ConfigParser.NoOptionError, AttributeError):
-                raise
-        except urllib2.URLError as e:
-            raise Exception('Connection to %s failed. %s' % (url, e), sys.exc_info()[2])
+        self.client = suds.client.Client(url)
+        header = self.client.factory.create('AuthHeader')
+        header.Domain = CONF.get('Auth Header', 'domain')
+        header.UserId = CONF.get('Auth Header', 'userid')
+        header.UserPassword = CONF.get('Auth Header', 'userpassword')
+        header.OemId = CONF.get('Auth Header', 'oemid')
+        header.OemPassword = CONF.get('Auth Header', 'oempassword')
+        self.client.set_options(soapheaders=header)
+        self.orgid = self.client.service.OrganizationQueryRoot()[0]
+        self.orgidarray = self.client.factory.create(
+            'ArrayOfstring')
+        self.orgidarray.string.append(self.orgid)
 
 
 class Member(object):
@@ -47,53 +68,62 @@ class Member(object):
 
 
 class MemberRequest(object):
-    def __init__(self, service, filename=None, action=None):
+    def __init__(self, service, args):
         self.service = service
-        self.action = action
-        self.majaction = self.action[0]
-        if len(self.action) > 1:
-            self.minaction = action[1]
-        else:
-            self.minaction = None
-        self.filename = filename
+        self.filename = args.get('-f', None)
+        self.args = args
+        self.action = args.get('-a', None)
+        self.subaction = args.get('<subaction>', None)
+        self.sync = args.get('-s', 'FALSE')
 
-        if self.majaction in ('QUERY', 'ADD', 'UPDATE', 'DELETE'):
-            if self.majaction == 'QUERY':
-                if self.minaction in ('MEMBERS', 'CMS', 'CFS'):
-                    self.query(self.minaction)
+        if self.action in ('QUERY', 'ADD', 'UPDATE', 'DELETE'):
+            if self.action == 'QUERY':
+                if self.subaction in ('MEMBERS', 'CMS', 'CFS'):
+                    self.query()
                 else:
-                    print 'Invalid option. %s' % self.minaction
+                    print 'Invalid option. %s' % self.subaction
+                    exit(__doc__)
 
-            if self.majaction == 'ADD':
+            if self.action == 'ADD':
                 if self.filename is None:
-                    print 'Must pass in a file when using ADD. eg. -f members.csv -a ADD'
+                    print 'Must pass in a file when using ADD. eg. ./viimu.py -f members.csv -a ADD'
+                    exit(__doc__)
                 else:
-                    self.add()
+                    self.add_update('ADD')
 
-            if self.majaction == 'DELETE':
+            if self.action == 'UPDATE':
                 if self.filename is None:
-                    print 'Must pass in a file when using ADD. eg. -f members.csv -a DELETE'
+                    print 'Must pass in a file when using ADD. eg. ./viimu.py -f members.csv -a ADD'
+                    exit(__doc__)
+                else:
+                    self.add_update('UPDATE')
+
+            if self.action == 'DELETE':
+                if self.filename is None:
+                    print 'Must pass in a file when using DELETE. eg. ./viimu.py -f members.csv -a DELETE'
+                    exit(__doc__)
                 else:
                     self.delete()
         else:
-            print '%s not a valid action.(QUERY, ADD, UPDATE, DELETE)' % self.majaction
-            sys.exit()
+            print '%s not a valid action.(QUERY, ADD, UPDATE, DELETE)' % self.action
+            exit(__doc__)
 
-    def query(self, minaction):
-        if self.minaction == 'MEMBERS':
+    def query(self):
+        if self.subaction == 'MEMBERS':
         # Writes out a JSON file of member login names and Id's to be deleted.
             if self.filename is None:
-                print 'Must pass in a file to query members.  \
-                eg. -f members.csv -a QUERY MEMBERS'
+                print '''Must pass in a file to query members.
+                        eg. ./viimu.py -f members.csv -a QUERY MEMBERS'''
+                exit(__doc__)
             else:
-                self.reader = csv.DictReader(
+                reader = csv.DictReader(
                     open(self.filename, 'rU'))
-                self.usernames = [
-                    row['Username'] for row in self.reader]
+                usernames = [
+                    row['Username'] for row in reader]
 
                 memberlist = []
                 try:
-                    for name in chunker(self.usernames, 299):
+                    for name in chunker(usernames, 299):
                         userdict = {}
                         print name
                         strmembers = self.service.client.factory.create(
@@ -103,8 +133,8 @@ class MemberRequest(object):
                             strmembers)
 
                         try:
-                            if len(members) == 0:
-                                print 'No Members found.'
+                            if len(members.Member) == 0:
+                                pass
                             else:
                                 for member in members:
                                     strmember, listofmembers = member
@@ -112,23 +142,24 @@ class MemberRequest(object):
                                     for i, m in enumerate(listofmembers):
                                         userdict[listofmembers[
                                             i].Username] = listofmembers[i].MemberId
-
                                 memberlist.append(userdict)
                         except AttributeError as e:
-                            print 'No Members found.'
-
+                            logging.exception('An error has occurred. %s' % e)
+                            pass
                     if len(memberlist) > 0:
                         try:
                             with open('members.json', 'wa') as f:
                                 f.write(json.dumps(memberlist, indent=4))
 
-                            print 'members.json has been successfully written out.'
+                            print 'members.json has been successfully written out with active members found.'
                         except IOError as e:
                             print e
                 except suds.WebFault as e:
+                    logging.exception(
+                        'An error has occurred. %s' % e.fault.detail)
                     print e.fault.detail
 
-        if self.minaction == 'CMS':  # Contact Methods
+        if self.subaction == 'CMS':  # Contact Methods
             cms = self.service.client.service.AvailableContactMethodQueryByOrganizationId(
                 self.service.orgid)
             for cm in cms:
@@ -139,7 +170,7 @@ class MemberRequest(object):
                                              c.Ordinal,
                                              c.DisplayName)
 
-        if self.minaction == 'CFS':  # Custom Fields
+        if self.subaction == 'CFS':  # Custom Fields
             cfs = self.service.client.service.OrganizationCustomFieldQueryByOrganizationId(
                 self.service.orgidarray, 0, 300)
             for cf in cfs:
@@ -147,13 +178,33 @@ class MemberRequest(object):
                 for c in cf:
                     print 'CF_%s' % (c.Name)
 
-    def add(self):
+    def add_update(self, action):
         members = self.service.client.factory.create('ArrayOfMember')
         membermodel = Member(self.service)
+        reader = csv.DictReader(open(self.filename, 'rU'))
 
         try:
-            self.reader = csv.DictReader(open(self.filename, 'rU'))
-            self.header = self.reader.fieldnames
+            if action == 'UPDATE':
+                usernames = [row['Username'] for row in reader]
+
+                for name in chunker(usernames, 299):
+                    userdict = {}
+                    print name
+                    strmembers = self.service.client.factory.create(
+                        'ArrayOfstring')
+                    strmembers.string.append(name)
+                    memberids = self.service.client.service.MemberQueryByUsername(
+                        strmembers)
+
+                    for member in memberids:
+                        strmember, listofmembers = member
+
+                    for i, m in enumerate(listofmembers):
+                        userdict[listofmembers[
+                            i].Username] = listofmembers[i].MemberId
+                # print userdict
+
+            reader = csv.DictReader(open(self.filename, 'rU'))
 
             memberfields = []
             cmfields = []
@@ -181,9 +232,8 @@ class MemberRequest(object):
                 for c in cf:
                     cffields.append('CF_%s' % (c.Name))
                     cfdict['CF_' + str(c.Name)] = c.OrganizationCustomFieldId
-            print cfdict
 
-            for row in self.reader:
+            for row in reader:
                 m = Member(self.service)
                 cms = self.service.client.factory.create(
                     'ArrayOfContactMethod')
@@ -245,25 +295,30 @@ class MemberRequest(object):
                         m.member[k] = v
                         m.member.ContactMethods = cms
                         m.member.MemberCustomFields = cfs
+                        if action == 'UPDATE':
+                            m.member.MemberId = userdict[m.member.Username]
 
                 members.Member.append(m.member)
-            print members
-
+            # print members
+            logging.info(members)
             try:
-                print self.service.client.service.MemberCreate(members)
+                if action == 'ADD':
+                    print self.service.client.service.MemberCreate(members)
+                if action == 'UPDATE':
+                    print self.service.client.service.MemberUpdate(
+                        members, '%s' % self.sync)
             except suds.WebFault as e:
+                logging.exception('An error has occurred. %s' % e.fault.detail)
                 print e.fault.detail
 
         except IOError as e:
+            logging.exception('An error has occurred. %s' % e)
             print 'File %s not found.' % self.filename
-
-    def update(self):
-        pass
 
     def delete(self):
         try:
-            self.memberids = json.load(open(self.filename, 'r'))
-            for memberdict in self.memberids:
+            memberids = json.load(open(self.filename, 'r'))
+            for memberdict in memberids:
                 try:
                     memberstring = self.service.client.factory.create(
                         'ArrayOfstring')
@@ -274,43 +329,36 @@ class MemberRequest(object):
                     confirmation = raw_input('Are you sure you want to delete %d users? yes/no: ' % len(
                         memberstring.string))
                     if confirmation == 'yes':
-                        print "Processing Deletes..."
+                        print 'Processing Deletes...'
                         try:
-                            print self.service.client.service.MemberDeleteById(
+                            deletes = self.service.client.service.MemberDeleteById(
                                 memberstring)
+                            print deletes
+                            logging.info(deletes)
                         except suds.WebFault as e:
+                            logging.exception(
+                                'An error has occurred. %s' % e.fault.detail)
                             print e.fault.detail
                     else:
                         print 'Halting execution.  Exiting.'
                 except Exception as e:
+                    logging.exception('An error has occurred. %s' % e)
                     print e
 
-        except ValueError:
+        except ValueError as e:
+            logging.exception('An error has occurred. %s' % e)
             print 'Exiting. Not a valid JSON file.'
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--file', help='Specify the file.', default=None)
-    parser.add_argument('-a',
-                        '--action',
-                        nargs='+',
-                        help='Specify the action. (QUERY, ADD, UPDATE, DELETE)', default=None)
-    parser.add_argument('-v', '--version', action='version',
-                        version='%(prog)s 0.1', default=None)
-
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
-
-    args = parser.parse_args()
+    args = docopt(__doc__, version='0.1')
 
     try:
         service = Service()
-        MemberRequest(service, args.file, args.action)
-    except Exception as e:
-    # except (urllib2.URLError, ConfigParser.NoOptionError, AttributeError) as e:
-        print e
+        MemberRequest(service, args)
+    except (suds.WebFault, urllib2.URLError, ConfigParser.NoOptionError, AttributeError) as e:
+        logging.exception('An error has occurred. %s' % e)
+        print 'An error has occurred. %s' % e
 
 if __name__ == '__main__':
     main()
