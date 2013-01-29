@@ -10,6 +10,9 @@ Note - ViiMU requires suds.  [SUDS](https://fedorahosted.org/suds/)
     pip install suds
     git clone https://github.com/tpe11etier/viimu.git
 
+Once installed you'll need to rename viimu.props.example to viimu.props and enter the correct values for your site.
+Logging is also controlled from this properties file.  INFO should be fine, but if you really want **lots** of info, set it to DEBUG.
+
 ##Usage
 
     Usage:
@@ -141,4 +144,13 @@ TRUE if the given members replace the existing subscriptions in the Varolii Prof
              Warnings = ""
           },
      }
+
+
+##TODO
+* Document code
+* Write test cases
+* More logging
+* py2exe?
+* fix bugs
+
 
