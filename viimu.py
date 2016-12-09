@@ -44,7 +44,7 @@ else:
 
 
 def chunker(seq, size):
-    return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
+    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 
 class Service(object):
@@ -252,49 +252,52 @@ class MemberRequest(object):
                         'ArrayOfMemberCustomField')
                     for k, v in x.items():
                         if k in cmfields:
-                            if k.split('_')[0] == 'Email':
-                                cm = self.service.client.factory.create(
-                                    'ContactMethod')
-                                cmemail = self.service.client.factory.create(
-                                    'ContactMethodEmail')
-                                cmemail.Qualifier = k.split('_')[1]
-                                cmemail.Ordinal = k.split('_')[2]
-                                cmemail.EmailAddress = v
-                                cm.ContactMethodEmail = cmemail
-                                cms.ContactMethod.append(cm)
+                            if not v:
+                                pass
+                            else:
+                                if k.split('_')[0] == 'Email':
+                                    cm = self.service.client.factory.create(
+                                        'ContactMethod')
+                                    cmemail = self.service.client.factory.create(
+                                        'ContactMethodEmail')
+                                    cmemail.Qualifier = k.split('_')[1]
+                                    cmemail.Ordinal = k.split('_')[2]
+                                    cmemail.EmailAddress = v
+                                    cm.ContactMethodEmail = cmemail
+                                    cms.ContactMethod.append(cm)
 
-                            if k.split('_')[0] == 'Phone':
-                                cm = self.service.client.factory.create(
-                                    'ContactMethod')
-                                cmphone = self.service.client.factory.create(
-                                    'ContactMethodPhone')
-                                cmphone.Qualifier = k.split('_')[1]
-                                cmphone.Ordinal = k.split('_')[2]
-                                cmphone.PhoneNum = v
-                                cm.ContactMethodPhone = cmphone
-                                cms.ContactMethod.append(cm)
+                                if k.split('_')[0] == 'Phone':
+                                    cm = self.service.client.factory.create(
+                                        'ContactMethod')
+                                    cmphone = self.service.client.factory.create(
+                                        'ContactMethodPhone')
+                                    cmphone.Qualifier = k.split('_')[1]
+                                    cmphone.Ordinal = k.split('_')[2]
+                                    cmphone.PhoneNum = v
+                                    cm.ContactMethodPhone = cmphone
+                                    cms.ContactMethod.append(cm)
 
-                            if k.split('_')[0] == 'Sms':
-                                cm = self.service.client.factory.create(
-                                    'ContactMethod')
-                                cmsms = self.service.client.factory.create(
-                                    'ContactMethodSMS')
-                                cmsms.Qualifier = k.split('_')[1]
-                                cmsms.Ordinal = k.split('_')[2]
-                                cmsms.PhoneNum = v
-                                cm.ContactMethodSMS = cmsms
-                                cms.ContactMethod.append(cm)
+                                if k.split('_')[0] == 'Sms':
+                                    cm = self.service.client.factory.create(
+                                        'ContactMethod')
+                                    cmsms = self.service.client.factory.create(
+                                        'ContactMethodSMS')
+                                    cmsms.Qualifier = k.split('_')[1]
+                                    cmsms.Ordinal = k.split('_')[2]
+                                    cmsms.PhoneNum = v
+                                    cm.ContactMethodSMS = cmsms
+                                    cms.ContactMethod.append(cm)
 
-                            if k.split('_')[0] == 'Fax':
-                                cm = self.service.client.factory.create(
-                                    'ContactMethod')
-                                cmfax = self.service.client.factory.create(
-                                    'ContactMethodFax')
-                                cmfax.Qualifier = k.split('_')[1]
-                                cmfax.Ordinal = k.split('_')[2]
-                                cmfax.PhoneNum = v
-                                cm.ContactMethodFax = cmfax
-                                cms.ContactMethod.append(cm)
+                                if k.split('_')[0] == 'Fax':
+                                    cm = self.service.client.factory.create(
+                                        'ContactMethod')
+                                    cmfax = self.service.client.factory.create(
+                                        'ContactMethodFax')
+                                    cmfax.Qualifier = k.split('_')[1]
+                                    cmfax.Ordinal = k.split('_')[2]
+                                    cmfax.PhoneNum = v
+                                    cm.ContactMethodFax = cmfax
+                                    cms.ContactMethod.append(cm)
                         if k in cffields:
                             cf = self.service.client.factory.create(
                                 'MemberCustomField')
@@ -316,6 +319,7 @@ class MemberRequest(object):
                         results = self.service.client.service.MemberCreate(
                             members)
                         print(results)
+                        # print(members)
                         logging.info(results)
                     if action == 'UPDATE':
                         print(self.service.client.service.MemberUpdate(
