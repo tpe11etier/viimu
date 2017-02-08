@@ -154,7 +154,7 @@ class MemberRequest(object):
                             pass
                     if len(memberlist) > 0:
                         try:
-                            with open('members.json', 'wa') as f:
+                            with open('members.json', 'w') as f:
                                 f.write(json.dumps(memberlist, indent=4))
 
                             print('members.json has been successfully written out with active members found.')

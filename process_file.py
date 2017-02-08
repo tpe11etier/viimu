@@ -2,6 +2,7 @@
 
 # Imports
 import csv
+import time
 
 # Dictionary containing mappings
 dict_contact_info = {
@@ -84,7 +85,7 @@ def process_file(filename):
     dict_headers['CF_2 Emp ID'] = 'CF_2 Emp ID'
     dict_headers['AccountEnabled'] = 'AccountEnabled'
     dict_headers['Password'] = 'Password'
-    writer = csv.DictWriter(open('extract_out.csv',  "w",encoding='utf-8', errors='ignore'), dict_headers,extrasaction='ignore')
+    writer = csv.DictWriter(open('extract_out_%s.csv' % time.strftime("%Y%m%d"),  "w",encoding='utf-8', errors='ignore'), dict_headers,extrasaction='ignore')
     print(dict_headers)
     writer.writeheader()
     for line in reader:
