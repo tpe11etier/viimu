@@ -12,6 +12,7 @@ requests.egg-info/
 *.pyc
 *.swp
 env/
+.venv/*
 xmlfiles/
 *.log
 .idea/

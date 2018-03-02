@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!./.venv/bin/python
 
 """Usage:
   viimu.py [-f filename] [-a <action> <subaction>] [-s <sync>]
@@ -58,8 +58,7 @@ class Service(object):
         header.OemPassword = CONF.get('Auth Header', 'oempassword')
         self.client.set_options(soapheaders=header)
         self.orgid = self.client.service.OrganizationQueryRoot()[0]
-        self.orgidarray = self.client.factory.create(
-            'ArrayOfstring')
+        self.orgidarray = self.client.factory.create('ArrayOfstring')
         self.orgidarray.string.append(self.orgid)
 
 
@@ -122,32 +121,24 @@ class MemberRequest(object):
                         eg. ./viimu.py -f members.csv -a QUERY MEMBERS''')
                 exit(__doc__)
             else:
-                reader = csv.DictReader(
-                    open(self.filename, 'rU'))
-                usernames = [
-                    row['Username'] for row in reader]
-
+                reader = csv.DictReader(open(self.filename, 'rU'))
+                usernames = [row['Username'] for row in reader]
                 memberlist = []
                 try:
                     for name in chunker(usernames, 299):
                         userdict = {}
-                        print(name)
-                        strmembers = self.service.client.factory.create(
-                            'ArrayOfstring')
+                        # print(name)
+                        strmembers = self.service.client.factory.create('ArrayOfstring')
                         strmembers.string.append(name)
-                        members = self.service.client.service.MemberQueryByUsername(
-                            strmembers)
-
+                        members = self.service.client.service.MemberQueryByUsername(strmembers)
                         try:
                             if len(members.Member) == 0:
                                 pass
                             else:
                                 for member in members:
                                     strmember, listofmembers = member
-
                                     for i, m in enumerate(listofmembers):
-                                        userdict[listofmembers[
-                                            i].Username] = listofmembers[i].MemberId
+                                        userdict[listofmembers[i].Username] = listofmembers[i].MemberId
                                 memberlist.append(userdict)
                         except AttributeError as e:
                             logging.exception('An error has occurred. %s' % e)
@@ -156,7 +147,6 @@ class MemberRequest(object):
                         try:
                             with open('members.json', 'w') as f:
                                 f.write(json.dumps(memberlist, indent=4))
-
                             print('members.json has been successfully written out with active members found.')
                         except IOError as e:
                             print(e)
@@ -184,52 +174,29 @@ class MemberRequest(object):
                 for c in cf:
                     print('CF_%s' % (c.Name))
 
+
     def add_update(self, action):
-        membermodel = Member(self.service)
+            membermodel = Member(self.service)
 
-        try:
-            if action == 'UPDATE':
-                reader = csv.DictReader(open(self.filename, 'rU'))
-                usernames = [row['Username'] for row in reader]
+            reader = csv.DictReader(open('LA04.csv', 'rU'))
+            usernames = [row['Username'] for row in reader]
 
-                for name in chunker(usernames, 299):
-                    userdict = {}
-                    print(name)
-                    strmembers = self.service.client.factory.create(
-                        'ArrayOfstring')
-                    strmembers.string.append(name)
-                    memberids = self.service.client.service.MemberQueryByUsername(
-                        strmembers)
-
-                    for member in memberids:
-                        strmember, listofmembers = member
-
-                    for i, m in enumerate(listofmembers):
-                        userdict[listofmembers[
-                            i].Username] = listofmembers[i].MemberId
-
-            reader = csv.DictReader(open(self.filename, 'rU'))
-
+            # Store names of Member Object attributes in a list.
             memberfields = []
             cmfields = []
             cffields = []
             cfdict = {}
-
             for attributes in membermodel.member:
                 k, v = attributes
                 memberfields.append(k)
 
-            contactmethods = self.service.client.service.AvailableContactMethodQueryByOrganizationId(
-                self.service.orgid)
-
-            customfields = self.service.client.service.OrganizationCustomFieldQueryByOrganizationId(
-                self.service.orgidarray, 0, 300)
+            contactmethods = self.service.client.service.AvailableContactMethodQueryByOrganizationId(self.service.orgid)
+            customfields = self.service.client.service.OrganizationCustomFieldQueryByOrganizationId(self.service.orgidarray, 0, 300)
 
             for cm in contactmethods:
                 strcm, cm = cm
                 for c in cm:
-                    cmfields.append(
-                        str('%s_%s_%s' % (c.Transport, c.Qualifier, c.Ordinal)))
+                    cmfields.append(str('%s_%s_%s' % (c.Transport, c.Qualifier, c.Ordinal)))
 
             for cf in customfields:
                 strcf, cf = cf
@@ -237,101 +204,106 @@ class MemberRequest(object):
                     cffields.append('CF_%s' % (c.Name))
                     cfdict['CF_' + str(c.Name)] = c.OrganizationCustomFieldId
 
-            rows = []
+            # Create new reader to iterate.
+            reader = csv.DictReader(open(self.filename, 'rU'))
 
+            rows = []
             for row in reader:
                 rows.append(row)
 
-            for row in chunker(rows, 299):
-                members = self.service.client.factory.create('ArrayOfMember')
-                for x in row:
-                    m = Member(self.service)
-                    cms = self.service.client.factory.create(
-                        'ArrayOfContactMethod')
-                    cfs = self.service.client.factory.create(
-                        'ArrayOfMemberCustomField')
-                    for k, v in x.items():
-                        if k in cmfields:
-                            if not v:
-                                pass
-                            else:
-                                if k.split('_')[0] == 'Email':
-                                    cm = self.service.client.factory.create(
-                                        'ContactMethod')
-                                    cmemail = self.service.client.factory.create(
-                                        'ContactMethodEmail')
-                                    cmemail.Qualifier = k.split('_')[1]
-                                    cmemail.Ordinal = k.split('_')[2]
-                                    cmemail.EmailAddress = v
-                                    cm.ContactMethodEmail = cmemail
-                                    cms.ContactMethod.append(cm)
+            # Read Usernames in from source file.
+            for name in chunker(usernames, 299):
+                # Create Dict to store Username:MemberId
+                userdict = {}
+                # Create a string array to hold Usernames
+                strmembers = self.service.client.factory.create('ArrayOfstring')
+                strmembers.string.append(name)
+                memberids = self.service.client.service.MemberQueryByUsername(strmembers)
 
-                                if k.split('_')[0] == 'Phone':
-                                    cm = self.service.client.factory.create(
-                                        'ContactMethod')
-                                    cmphone = self.service.client.factory.create(
-                                        'ContactMethodPhone')
-                                    cmphone.Qualifier = k.split('_')[1]
-                                    cmphone.Ordinal = k.split('_')[2]
-                                    cmphone.PhoneNum = v
-                                    cm.ContactMethodPhone = cmphone
-                                    cms.ContactMethod.append(cm)
+                for member in memberids:
+                    strmember, listofmembers = member
 
-                                if k.split('_')[0] == 'Sms':
-                                    cm = self.service.client.factory.create(
-                                        'ContactMethod')
-                                    cmsms = self.service.client.factory.create(
-                                        'ContactMethodSMS')
-                                    cmsms.Qualifier = k.split('_')[1]
-                                    cmsms.Ordinal = k.split('_')[2]
-                                    cmsms.PhoneNum = v
-                                    cm.ContactMethodSMS = cmsms
-                                    cms.ContactMethod.append(cm)
+                for i, m in enumerate(listofmembers):
+                    userdict[listofmembers[i].Username] = listofmembers[i].MemberId
 
-                                if k.split('_')[0] == 'Fax':
-                                    cm = self.service.client.factory.create(
-                                        'ContactMethod')
-                                    cmfax = self.service.client.factory.create(
-                                        'ContactMethodFax')
-                                    cmfax.Qualifier = k.split('_')[1]
-                                    cmfax.Ordinal = k.split('_')[2]
-                                    cmfax.PhoneNum = v
-                                    cm.ContactMethodFax = cmfax
-                                    cms.ContactMethod.append(cm)
-                        if k in cffields:
-                            cf = self.service.client.factory.create(
-                                'MemberCustomField')
-                            cf.Value = v
-                            cf.OrganizationCustomFieldId = cfdict[k]
-                            cfs.MemberCustomField.append(cf)
+                for row in chunker(rows, 299):
+                    # Create Member Array
+                    members = self.service.client.factory.create('ArrayOfMember')
+                    for x in row:
+                        # Create Member Object
+                        m = Member(self.service)
+                        cms = self.service.client.factory.create('ArrayOfContactMethod')
+                        cfs = self.service.client.factory.create('ArrayOfMemberCustomField')
+                        # Iterate through row data and assign member attributes if they exist in file.
+                        for k, v in x.items():
+                            if k in cmfields:
+                                if not v:
+                                    pass
+                                else:
+                                    if k.split('_')[0] == 'Email':
+                                        cm = self.service.client.factory.create('ContactMethod')
+                                        cmemail = self.service.client.factory.create('ContactMethodEmail')
+                                        cmemail.Qualifier = k.split('_')[1]
+                                        cmemail.Ordinal = k.split('_')[2]
+                                        cmemail.EmailAddress = v
+                                        cm.ContactMethodEmail = cmemail
+                                        cms.ContactMethod.append(cm)
 
-                        if k in memberfields:
-                            m.member[k] = v
-                            m.member.ContactMethods = cms
-                            m.member.MemberCustomFields = cfs
-                            if action == 'UPDATE':
+                                    if k.split('_')[0] == 'Phone':
+                                        cm = self.service.client.factory.create('ContactMethod')
+                                        cmphone = self.service.client.factory.create('ContactMethodPhone')
+                                        cmphone.Qualifier = k.split('_')[1]
+                                        cmphone.Ordinal = k.split('_')[2]
+                                        cmphone.PhoneNum = v
+                                        cm.ContactMethodPhone = cmphone
+                                        cms.ContactMethod.append(cm)
+
+                                    if k.split('_')[0] == 'Sms':
+                                        cm = self.service.client.factory.create('ContactMethod')
+                                        cmsms = self.service.client.factory.create('ContactMethodSMS')
+                                        cmsms.Qualifier = k.split('_')[1]
+                                        cmsms.Ordinal = k.split('_')[2]
+                                        cmsms.PhoneNum = v
+                                        cm.ContactMethodSMS = cmsms
+                                        cms.ContactMethod.append(cm)
+
+                                    if k.split('_')[0] == 'Fax':
+                                        cm = self.service.client.factory.create('ContactMethod')
+                                        cmfax = self.service.client.factory.create('ContactMethodFax')
+                                        cmfax.Qualifier = k.split('_')[1]
+                                        cmfax.Ordinal = k.split('_')[2]
+                                        cmfax.PhoneNum = v
+                                        cm.ContactMethodFax = cmfax
+                                        cms.ContactMethod.append(cm)
+                            if k in cffields:
+                                cf = self.service.client.factory.create('MemberCustomField')
+                                cf.Value = v
+                                cf.OrganizationCustomFieldId = cfdict[k]
+                                cfs.MemberCustomField.append(cf)
+                            if k in memberfields:
+                                m.member[k] = v
+                                m.member.ContactMethods = cms
+                                m.member.MemberCustomFields = cfs
+                        if action == 'ADD':
+                            members.Member.append(m.member)
+                        if action == 'UPDATE':
+                            if m.member.Username in userdict:
+                                # Set MemberId from Dictionary values
                                 m.member.MemberId = userdict[m.member.Username]
-
-                    members.Member.append(m.member)
-                logging.info(members)
-                try:
-                    if action == 'ADD':
-                        results = self.service.client.service.MemberCreate(
-                            members)
-                        print(results)
-                        # print(members)
-                        logging.info(results)
-                    if action == 'UPDATE':
-                        print(self.service.client.service.MemberUpdate(
-                            members, '%s' % self.sync))
-                except suds.WebFault as e:
-                    logging.exception(
-                        'An error has occurred. %s' % e.fault.detail)
-                    print(e.fault.detail)
-
-        except IOError as e:
-            logging.exception('An error has occurred. %s' % e)
-            print('File %s not found.' % self.filename)
+                                if m.member.MemberId is not None:
+                                    # Append Member Object to Member Array
+                                    members.Member.append(m.member)
+                    try:
+                        logging.info(members)
+                        if action == 'ADD':
+                            logging.info(members)
+                            # results = self.service.client.service.MemberCreate(members)
+                        if action == 'UPDATE':
+                            logging.info(members)
+                            # logging.info(self.service.client.service.MemberUpdate(members, '%s' % self.sync))
+                    except suds.WebFault as e:
+                        logging.exception('An error has occurred. %s' % e.fault.detail)
+                        print(e.fault.detail)
 
     def delete(self):
         try:
@@ -351,8 +323,6 @@ class MemberRequest(object):
                             'ArrayOfstring')
                         for k, v in memberdict.items():
                             memberstring.string.append(v)
-                        logging.info(memberstring)
-                        print(memberstring)
 
                         deletes = self.service.client.service.MemberDeleteById(
                             memberstring)
@@ -381,3 +351,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
